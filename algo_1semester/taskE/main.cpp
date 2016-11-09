@@ -4,171 +4,127 @@
 
 using namespace std;
 
-typedef vector<vector<int>> graph;
-typedef vector<int>::const_iterator const_graph_iter;
+int n, l;
+vector < vector<int> > g;
+vector<int> tin, tout;
+int timer;
+vector < vector<int> > up;
 
-vector<int> lca_h, lca_dfs_list, lca_first, lca_tree;
-vector<bool> lca_dfs_used;
-
-int n;
-
-void lca_dfs(const graph &g, int v, int h = 1) {
-    lca_dfs_used[v] = true;
-    lca_h[v] = h;
-    lca_dfs_list.push_back(v);
-    for (const_graph_iter i = g[v].begin(); i != g[v].end(); ++i) {
-        if (!lca_dfs_used[*i]) {
-            lca_dfs(g, *i, h + 1);
-            lca_dfs_list.push_back(v);
-        }
+void dfs (int v, int p = 0) {
+    tin[v] = ++timer;
+    up[v][0] = p;
+    for (int i=1; i<=l; ++i)
+        up[v][i] = up[up[v][i-1]][i-1];
+    for (size_t i=0; i<g[v].size(); ++i) {
+        int to = g[v][i];
+        if (to != p)
+            dfs (to, v);
     }
+    tout[v] = ++timer;
 }
 
-void lca_build_tree(int i, int l, int r) {
-    if (l == r) {
-        lca_tree[i] = lca_dfs_list[l];
-    } else {
-        int m = (l + r) >> 1;
-        lca_build_tree(i * 2, l, m);
-        lca_build_tree(i * 2 + 1, m + 1, r);
-        if (lca_h[lca_tree[i * 2]] < lca_h[lca_tree[i * 2 + 1]]) {
-            lca_tree[i] = lca_tree[i * 2];
-        } else {
-            lca_tree[i] = lca_tree[i * 2 + 1];
-        }
-    }
+bool upper (int a, int b) {
+    return tin[a] <= tin[b] && tout[a] >= tout[b];
 }
 
-void lca_prepare(const graph &g, int root) {
-
-    lca_h.assign(n, 0);
-    lca_dfs_list.resize(0);
-    lca_dfs_list.reserve(n * 2);
-    lca_dfs_used.assign(n, false);
-
-    lca_dfs(g, root);
-
-    int m = (int) lca_dfs_list.size();
-    lca_tree.assign(m * 4 + 1, -1);
-
-    lca_build_tree(1, 0, m - 1);
-    lca_first.assign(n, -1);
-    for (int i = 0; i < m; i++) {
-        int v = lca_dfs_list[i];
-        if (lca_first[v] == -1) {
-            lca_first[v] = i;
-        }
-    }
+int lca (int a, int b) {
+    if (upper (a, b))  return a;
+    if (upper (b, a))  return b;
+    for (int i=l; i>=0; --i)
+        if (! upper (up[a][i], b))
+            a = up[a][i];
+    return up[a][0];
 }
 
-int lca_tree_min(int i, int sl, int sr, int l, int r) {
-    if (sl == l && sr == r) {
-        return lca_tree[i];
-    }
-    int sm = (sl + sr) >> 1;
-    if (r <= sm) {
-        return lca_tree_min(i * 2, sl, sm, l, r);
-    }
-    if (l > sm) {
-        return lca_tree_min(i + i + 1, sm + 1, sr, l, r);
-    }
-    int ans1 = lca_tree_min(i + i, sl, sm, l, sm);
-    int ans2 = lca_tree_min(i + i + 1, sm + 1, sr, sm + 1, r);
-    return lca_h[ans1] < lca_h[ans2] ? ans1 : ans2;
-}
-
-int lca(int a, int b) {
-    int left = lca_first[a],
-            right = lca_first[b];
-    if (left > right) swap(left, right);
-    return lca_tree_min(1, 0, (int) lca_dfs_list.size() - 1, left, right);
-}
-
-\
 
 
 int main() {
-    ifstream in;
+ /*   ifstream in;
     ofstream out;
     in.open("dynamic.in", ios::in);
     out.open("dynamic.out", ios::out);
+*/
 
 
-   /* in >> n;
-    while (n != 0) {
+    freopen("dynamic.in", "r", stdin);
+    freopen("dynamic.out", "w", stdout);
+
+    while (true) {
+        int n;
+  //      in >> n;
+        scanf("%d", &n);
+        if (n == 0) break;
         graph g;
         int root = 0;
         int m;
-        g.assign(n, vector<int>(0));
+        g.resize(n);
         for (int i = 1; i <= n - 1; i++) {
             int x, y;
-            in >> x >> y;
+         //   in >> x >> y;
+            scanf("%d %d", &x, &y);
             g[x - 1].push_back(y - 1);
         }
-        lca_prepare(g, root);
-        in >> m;
+        //lca_prepare(g, root);
+      //  in >> m;
+        tin.resize (n),  tout.resize (n),  up.resize (n);
+        l = 1;
+        while ((1<<l) <= n)  ++l;
+        for (int i=0; i<n; ++i)  up[i].resize (l+1);
+        dfs (0);
+
+        scanf("%d", &m);
         for (int i = 0; i < m; i++) {
             char t;
             int x, y;
-            in >> t;
+            scanf(" %c", &t);
+            //in >> t;
             if (t == '?') { //find LCA
-                in >> x >> y;
+               // in >> x >> y;
+                scanf("%d %d", &x, &y);
                 x--, y--;
                 int a = lca(x, y);
-                int b = lca(x, root);
-                int c = lca(y, root);
-                //Choose node with the deepsest level
-                if (lca_h[a] > lca_h[b]) {
-                    if (lca_h[a] > lca_h[c]) {
-                        out << a + 1 << endl;
-                    } else {
-                        out << c + 1 << endl;
-                    }
+                if (root == 0) {
+                    printf("%d\n", ++a);
+ //                   out << a + 1 << endl;
                 } else {
-                    if (lca_h[b] > lca_h[c]) {
-                        out << b + 1 << endl;
+                    int b = lca(x, root);
+                    int c = lca(y, root);
+                    //Choose node with the deepsest level
+                    if (lca_h[a] > lca_h[b]) {
+                        if (lca_h[a] > lca_h[c]) {
+                          //  out << a + 1 << endl;
+                            printf("%d\n", ++a);
+                        } else {
+                            printf("%d\n", ++c);
+                            //out << c + 1 << endl;
+                        }
                     } else {
-                        out << c + 1 << endl;
+                        if (lca_h[b] > lca_h[c]) {
+                            printf("%d\n", ++b);
+                           // out << b + 1 << endl;
+                        } else {
+                            printf("%d\n", ++c);
+                           // out << c + 1 << endl;
+                        }
                     }
                 }
-
             } else { //change root
-                in >> x;
+               // in >> x;
+                scanf("%d", &x);
                 root = --x;
             }
         }
-        in >> n;
+        g.clear();
+        lca_h.clear();
+        lca_dfs_list.clear();
+        lca_tree.clear();
+        lca_dfs_used.clear();
+        lca_first.clear();
     }
 
-    in.close();
-    out.close();
-    return 0;*/
-    in >> n;
-    graph g;
-    int root;
-    int m;
-    g.assign(n, vector<int>(0));
-
-    for (int i = 0; i < n; i++) {
-        int x;
-        in >> x;
-        if (x == 0)
-            root = i;
-        else
-            g[x - 1].push_back(i - 1);
-    }
-    lca_prepare(g, root);
-    in >> m;
-    for (int i = 0; i < m; i++) {
-        int a, b;
-        in >> a >> b;
-        if (lca(--a, --b) == --a) {
-            out << 1 << endl;
-        } else {
-            out << 0 << endl;
-        }
-    }
-    in.close();
-    out.close();
+    fclose(stdin);
+    fclose(stdout);
+   /* in.close();
+    out.close();*/
     return 0;
 }
